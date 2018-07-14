@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const db = require(path.resolve('configs/keys.js')).mongoURI;
 const Logger = require('winston-preformatted-logger');
 const log = new Logger({logFilename: 'devConnector'}).logger;
+const bodyParser = require('body-parser');
 
 mongoose.connect(db, {useNewUrlParser: true})
     .then(resolve => {
@@ -29,6 +30,9 @@ const app = express();
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
+
+app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.json());
 
 app.use(morganLogger('tiny', { "stream": log.stream}));
 app.use(express.json());
@@ -61,6 +65,11 @@ app.use(function(err, req, res, next) {
   // render the error page
   res.status(err.status || 500);
   res.render('error');
+});
+
+process.on('unhandledRejection', error => {
+    // Will print "unhandledRejection err is not defined"
+    console.log('unhandledRejection', error);
 });
 
 module.exports = app;
