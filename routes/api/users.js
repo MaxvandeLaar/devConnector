@@ -10,6 +10,9 @@ const jwt = require('jsonwebtoken');
 const keys = require(path.resolve('configs/keys'));
 const passport = require('passport');
 
+const validateRegisterInput = require(path.resolve('validation/register'));
+const validateLoginInput = require(path.resolve('validation/login'));
+
 /**
  * @route GET api/users/test
  * @desc Test users route
@@ -25,31 +28,37 @@ router.get('/test', (req, res, next) => {
  * @access Public
  */
 router.post('/register', (req, res, next) => {
-    User.findOne({email: req.body.email })
+    const {errors, isValid} = validateRegisterInput(req.body);
+    if (!isValid) {
+        return res.status(400).json(errors);
+    }
+    User.findOne({email: req.body.email})
         .then(user => {
-            if (user){
-                return res.status(400).json({email: 'email already exists'});
-            } else {
-                const newUser = new User({
-                    name: req.body.name,
-                    email: req.body.email,
-                    avatar: gravatar.url(req.body.email, {s: '200', r: 'pg', d:'mm'}),
-                    password : req.body.password
-                });
+            if (user) {
+                errors.email = 'Email already exists';
+                return res.status(400).json(errors);
+            }
 
-                bcrypt.genSalt(10, (err, salt) => {
-                    bcrypt.hash(newUser.password, salt, (error, hash) => {
-                        if (error) throw error;
-                        newUser.password = hash;
-                        newUser.save()
-                            .then(user => {
-                                res.json(user);
-                            }).catch(err => {
-                                log.stack(err);
-                        });
+            const newUser = new User({
+                name: req.body.name,
+                email: req.body.email,
+                avatar: gravatar.url(req.body.email, {s: '200', r: 'pg', d: 'mm'}),
+                password: req.body.password
+            });
+
+            bcrypt.genSalt(10, (err, salt) => {
+                bcrypt.hash(newUser.password, salt, (error, hash) => {
+                    if (error) throw error;
+                    newUser.password = hash;
+                    newUser.save()
+                        .then(user => {
+                            res.json(user);
+                        }).catch(err => {
+                        log.stack(err);
                     });
                 });
-            }
+            });
+
         });
 });
 
@@ -59,18 +68,24 @@ router.post('/register', (req, res, next) => {
  * @access Public
  */
 router.post('/login', (req, res, next) => {
+
+    const {errors, isValid} = validateLoginInput(req.body);
+    if (!isValid) {
+        return res.status(400).json(errors);
+    }
     const email = req.body.email;
     const password = req.body.password;
 
     User.findOne({email: email})
         .then(user => {
             if (!user) {
-                return res.status(404).json({email: 'User not found'});
+                errors.email = "User not found";
+                return res.status(404).json(errors);
             }
 
             bcrypt.compare(password, user.password)
                 .then(isMatch => {
-                    if (isMatch){
+                    if (isMatch) {
                         const payload = {
                             id: user.id,
                             name: user.name,
@@ -82,14 +97,15 @@ router.post('/login', (req, res, next) => {
                         });
 
                     } else {
-                        return res.status(400).json({password: 'Password incorrect'});
+                        errors.password = "Password incorrect";
+                        return res.status(400).json(errors);
                     }
-                })
+                });
         })
         .catch(error => {
             log.stack(error);
             return res.status(500).json({error: 'Something went wrong'});
-        })
+        });
 });
 
 /**
@@ -97,7 +113,7 @@ router.post('/login', (req, res, next) => {
  * @desc Return current user
  * @access Private
  */
-router.get('/current', passport.authenticate('jwt', {session: false,}), (req, res, done) => {
+router.get('/current', passport.authenticate('jwt', {session: false}), (req, res, done) => {
     res.json({
         id: req.user.id,
         name: req.user.name,
