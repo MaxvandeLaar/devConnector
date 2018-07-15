@@ -9,9 +9,10 @@ const db = require(path.resolve('configs/keys.js')).mongoURI;
 const Logger = require('winston-preformatted-logger');
 const log = new Logger({logFilename: 'devConnector'}).logger;
 const bodyParser = require('body-parser');
+const passport = require('passport');
 
 mongoose.connect(db, {useNewUrlParser: true})
-    .then(resolve => {
+    .then( () => {
       log.info('MongoDB connected');
     })
     .catch(error => {
@@ -33,6 +34,9 @@ app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
+
+app.use(passport.initialize());
+require(path.resolve('configs/passport'))(passport);
 
 app.use(morganLogger('tiny', { "stream": log.stream}));
 app.use(express.json());
