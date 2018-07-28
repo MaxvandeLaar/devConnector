@@ -189,6 +189,49 @@ router.post('/education', passport.authenticate('jwt', {session: false}), (req, 
 });
 
 /**
+ * @route DELETE api/profile/experience/:id
+ * @desc Delete experience from a profile
+ * @access Private
+ */
+router.delete('/experience/:id', passport.authenticate('jwt', {session: false}), (req, res, next) => {
+    Profile.findOne({user: req.user.id})
+        .then(profile => {
+            const removeIndex = profile.experience.map(item => item.id)
+                .indexOf(req.params.id);
+
+            profile.experience.splice(removeIndex, 1);
+            profile.save().then(profile => {
+                res.json(profile);
+            });
+        })
+        .catch(err => {
+            res.status(500).json(err);
+        });
+});
+
+/**
+ * @route DELETE api/profile/education/:id
+ * @desc Delete education from a profile
+ * @access Private
+ */
+router.delete('/education/:id', passport.authenticate('jwt', {session: false}), (req, res, next) => {
+    Profile.findOne({user: req.user.id})
+        .then(profile => {
+            const removeIndex = profile.education.map(item => item.id)
+                .indexOf(req.params.id);
+
+            profile.education.splice(removeIndex, 1);
+            profile.save().then(profile => {
+                res.json(profile);
+            });
+        })
+        .catch(err => {
+            res.status(500).json(err);
+        });
+});
+
+
+/**
  * @route POST api/profile
  * @desc Create user profile
  * @access Private
@@ -245,6 +288,21 @@ router.post('/', passport.authenticate('jwt', {session: false}), (req, res, next
             }
         });
 
+});
+
+/**
+ * @route DELETE api/profile
+ * @desc Delete user and profile
+ * @access Private
+ */
+router.delete('/', passport.authenticate('jwt', {session: false}), (req, res, next) => {
+    Profile.findOneAndRemove({user: req.user.id})
+        .then(() => {
+            User.findOneAndRemove({_id: req.user.id})
+                .then(() => {
+                    res.json({success: true});
+                })
+        })
 });
 
 module.exports = router;
