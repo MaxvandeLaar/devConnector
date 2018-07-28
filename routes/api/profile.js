@@ -8,6 +8,8 @@ const User = require(path.resolve('routes/models/User'));
 const Logger = require('winston-preformatted-logger');
 const log = new Logger({logFilename: 'devConnector'}).logger;
 const validateProfileInput = require(path.resolve('validation/profile'));
+const validateExperienceInput = require(path.resolve('validation/experience'));
+const validateEducationInput = require(path.resolve('validation/education'));
 
 /**
  * @route GET api/profile/test
@@ -108,6 +110,82 @@ router.get('/handle/:handle', (req, res, next) => {
         .catch(err => {
             res.status(500).json(err);
         });
+});
+
+/**
+ * @route POST api/profile/experience
+ * @desc Add experience to a profile
+ * @access Private
+ */
+router.post('/experience', passport.authenticate('jwt', {session: false}), (req, res, next) => {
+    const {errors, isValid} = validateExperienceInput(req.body);
+
+    if (!isValid){
+        return res.status(400).json(errors);
+    }
+
+    Profile.findOne({user: req.user.id})
+        .then(profile => {
+            const newExp = {
+                title: req.body.title,
+                company: req.body.company,
+                location: req.body.location,
+                from: req.body.from,
+                to: req.body.to,
+                current: req.body.current,
+                description: req.body.description
+            };
+
+            if (!profile){
+                errors.noProfile = 'There is no profile for this user';
+                return res.status(404).json(errors);
+            }
+
+            profile.experience.unshift(newExp);
+            profile.save()
+                .then(profile => {
+                    res.json(profile);
+                })
+
+        })
+});
+
+/**
+ * @route POST api/profile/education
+ * @desc Add education to a profile
+ * @access Private
+ */
+router.post('/education', passport.authenticate('jwt', {session: false}), (req, res, next) => {
+    const {errors, isValid} = validateEducationInput(req.body);
+
+    if (!isValid){
+        return res.status(400).json(errors);
+    }
+
+    Profile.findOne({user: req.user.id})
+        .then(profile => {
+            const newEducation = {
+                school: req.body.school,
+                degree: req.body.degree,
+                field: req.body.field,
+                description: req.body.description,
+                from: req.body.from,
+                to: req.body.to,
+                current: req.body.current
+            };
+
+            if (!profile){
+                errors.noProfile = 'There is no profile for this user';
+                return res.status(404).json(errors);
+            }
+
+            profile.education.unshift(newEducation);
+            profile.save()
+                .then(profile => {
+                    res.json(profile);
+                })
+
+        })
 });
 
 /**
