@@ -7,6 +7,7 @@ const Profile = require(path.resolve('routes/models/Profile'));
 const User = require(path.resolve('routes/models/User'));
 const Logger = require('winston-preformatted-logger');
 const log = new Logger({logFilename: 'devConnector'}).logger;
+const validateProfileInput = require(path.resolve('validation/profile'));
 
 /**
  * @route GET api/profile/test
@@ -26,6 +27,7 @@ router.get('/', passport.authenticate('jwt', {session: false}), (req, res, next)
     const errors = {};
 
     Profile.findOne({user: req.user.id})
+        .populate('user', ['name', 'avatar'])
         .then(profile => {
             if (!profile) {
                 errors.noProfile = 'There is no profile for this user';
@@ -45,6 +47,12 @@ router.get('/', passport.authenticate('jwt', {session: false}), (req, res, next)
  * @access Private
  */
 router.post('/', passport.authenticate('jwt', {session: false}), (req, res, next) => {
+    const {errors, isValid} = validateProfileInput(req.body);
+
+    if (!isValid){
+        return res.status(400).json(errors);
+    }
+
     const profileFields = {
         user: req.user.id,
         handle: req.body.handle || undefined,
